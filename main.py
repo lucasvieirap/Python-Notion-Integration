@@ -7,25 +7,31 @@ def main():
     load_dotenv()
 
     notion_secret = os.environ.get("SECRET")
-    block_id = os.environ.get("BLOCK_ID")
+    page_id = os.environ.get("PAGE_ID")
 
     notion = Client(auth=notion_secret)
 
-    results = notion.blocks.children.list(block_id=str(block_id))
+    page_content = notion.blocks.children.list(block_id=str(page_id))
 
-    for result in results['results']:
+    for object in page_content['results']:
+        if object['type'] == 'table':
+            table_id = object['id']
+            table_content = notion.blocks.children.list(block_id=table_id)
 
-        num_columns = len(result['table_row']['cells'])
+            for table_results in table_content['results']:
+                cells = table_results['table_row']['cells']
+                columns = len(cells)
+                for index, cell in enumerate(cells):
+                    try:
+                        cell_content = cell[0]['text']['content']
+                    except IndexError:
+                        cell_content = ' '
+                    if index >= columns - 1:
+                        print(cell_content)
+                    if index <= columns - 2:
+                        print(cell_content, end=" | ")
 
-        for index, cell in enumerate(result['table_row']['cells']):
-
-            if cell[0]['type'] == "text":
-
-                if index >= num_columns - 1:
-                    print(cell[0]['text']['content'])
-
-                elif index <= num_columns - 2:
-                    print(cell[0]['text']['content'], end=" | ")
+            print('=' * 25 + '\n')
 
 if __name__ == '__main__':
     main()
