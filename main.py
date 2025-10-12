@@ -2,8 +2,28 @@ import os, csv
 from notion_client import Client
 from dotenv import load_dotenv
 
-def build_row(num_columns, cells, row=[]): 
-    for index, cell in enumerate(cells):
+def build_table(table_objs):
+
+    table = []
+    table_row = []
+
+    for table_content in table_objs:
+
+        try:
+            cells = table_content['table_row']['cells']
+        except KeyError:
+            cells = ''
+
+        table_row = build_row(cells)
+        table.append(table_row)
+
+    return table
+
+def build_row(cells): 
+
+    row = []
+
+    for cell in cells:
 
         try:
             cell_content = cell[0]['text']['content']
@@ -11,9 +31,6 @@ def build_row(num_columns, cells, row=[]):
             cell_content = ''
 
         row.insert(len(row), cell_content)
-
-        if index >= num_columns:
-            continue
 
     return row
 
@@ -33,27 +50,19 @@ def main():
 
     for table_obj_index, table_id in enumerate(table_ids):
 
-        with open(f"data{table_obj_index}.csv", 'w', newline='') as f:
+        filename = f"notion_table_{table_obj_index}.csv"
+
+        with open(filename, 'w', newline='') as f:
+
             writer = csv.writer(f)
 
             table_contents = notion.blocks.children.list(block_id=table_id)
-            
-            for table_content in table_contents['results']:
 
-                try:
-                    cells = table_content['table_row']['cells']
-                except KeyError:
-                    cells = ''
+            table = build_table(table_contents['results'])
 
-                num_columns = len(cells)
+            writer.writerows(table)
 
-                row = build_row(num_columns, cells)
-
-                writer.writerow(row)
-
-                row.clear()
-
-        print(f"Wrote data{table_obj_index}.csv file")
+        print(f"Wrote file: {filename}")
 
 
 if __name__ == '__main__':
