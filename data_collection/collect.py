@@ -7,27 +7,6 @@ def get_pageid_from_url(urlstring):
     page_id = "".join(char_list)
     return page_id
 
-def get_paragraph_objects(notion, dataset):
-
-    list_objs = list(filter(lambda obj: obj['type'] == 'column_list' or obj['type'] == 'paragraph', dataset['results']))
-    list_ids = list(map(lambda tab: tab['id'], list_objs))
-
-    data = []
-
-    for index, obj in enumerate(list_objs):
-
-        if obj['type'] == 'paragraph':
-            data.append(obj)
-            continue
-
-        column_objs = notion.blocks.children.list(block_id=str(list_ids[index]))
-
-        for column in column_objs['results']:
-            obj = notion.blocks.children.list(block_id=str(column['id']))
-            data.append(obj['results'][0])
-
-    return data
-
 def get_table_objects(notion, dataset):
 
     list_objs = list(filter(lambda obj: obj['type'] == 'column_list' or obj['type'] == 'table', dataset['results']))

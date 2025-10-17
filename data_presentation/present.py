@@ -1,50 +1,53 @@
-import os, csv, string, math
+import math
 import pandas as pd
 
 import xlsxwriter
-from xlsxwriter.color import Color
 
-def create_csv_from_table_obj(data, filename):
-    with open(filename, 'w', newline='') as f:
+def number_to_alphabet(num: int) -> str:
+    if num == 0:
+        return ""
 
-        writer = csv.writer(f)
+    return number_to_alphabet((num-1)//26) + chr((num-1)%26+ord("A"))
 
-        table = build_table_from_obj(data, filename.split('.')[0])
-        writer.writerows(table)
+def create_linechart_from_data(data, workbook, worksheet, pos) -> xlsxwriter.Workbook:
 
-    print(f"Wrote file: {filename}")
+    alpha_column = number_to_alphabet(pos['col'] + 1)
 
-def create_linechart_from_data(data, filename) -> xlsxwriter.Workbook:
+    sheet = workbook.add_worksheet()
 
-    workbook = xlsxwriter.Workbook(f"{filename}.xlsx")
-    worksheet = workbook.add_worksheet()
+    chart = workbook.add_chart({ 'type': 'line' })
+    chart.set_title({'name': f'=Sheet1!${ alpha_column }${ pos['row'] + 1 }'})
+
     number_format = workbook.add_format({'num_format': '#'})
-
-    chart = workbook.add_chart({'type': 'line'})
-    chart.set_title({'name': '=Sheet1!$A$1'})
 
     max = 0
 
     for row_index, row in enumerate(data):
+
         for cell_index, cell in enumerate(row): 
+
+            cell_pos = { 'row': pos['row'] + row_index, 'col': pos['col'] + cell_index }
+
             try: 
-                worksheet.write_number(row_index, cell_index, float(cell), number_format)
+
+                worksheet.write_number(cell_pos['row'], cell_pos['col'], float(cell), number_format)
 
                 if max < float(cell):
                     max = math.floor(float(cell)+(float(cell)/3))
 
             except (TypeError, ValueError):
-                worksheet.write(row_index, cell_index, cell)
+
+                worksheet.write(cell_pos['row'], cell_pos['col'], cell)
 
             if cell_index > 0 and row_index == 1: 
 
-                current_column = string.ascii_uppercase[cell_index]
+                current_column = number_to_alphabet(cell_pos['col'] + 1)
                 last_row_index = len(data)
 
                 chart.add_series({
-                    'name': f'=Sheet1!${current_column}$2',
-                    'categories': f'=Sheet1!$A$3:$A${last_row_index}',
-                    'values': f'=Sheet1!${current_column}$3:${current_column}${last_row_index}',
+                    'name': f'=Sheet1!${current_column}${pos['row']+2}',
+                    'categories': f'=Sheet1!${alpha_column}${pos['row']+3}:${alpha_column}${pos['row']+last_row_index}',
+                    'values': f'=Sheet1!${current_column}${pos['row']+3}:${current_column}${pos['row']+last_row_index}',
                     'marker': {'type': 'circle'}
                 })
 
@@ -59,25 +62,11 @@ def create_linechart_from_data(data, filename) -> xlsxwriter.Workbook:
 
     chart.set_style(11)
 
-    worksheet.insert_chart('F2', chart)
+    sheet.insert_chart('A1', chart)
 
     return workbook
 
-def create_chart_from_csv(csvfilepath):
-
-    csv_data = []
-
-    with open(csvfilepath, newline='') as csvfile:
-
-        reader = csv.reader(csvfile)
-
-        for row in reader:
-            csv_data.append(row)
-
-    workbook = create_linechart_from_data(csv_data, 'data')
-    workbook.close()
-
-def build_table_from_obj(table_obj):
+def build_table_from_obj(table_obj) -> list:
 
     table_row_objs = table_obj['results']
 
@@ -87,8 +76,11 @@ def build_table_from_obj(table_obj):
     for row in table_row_objs:
 
         try:
+
             cells = row['table_row']['cells']
+
         except KeyError:
+
             cells = None
 
         table_row = build_row(cells)
@@ -96,29 +88,20 @@ def build_table_from_obj(table_obj):
 
     return table
 
-def build_row(cells): 
+def build_row(cells) -> list: 
 
     row = []
 
     for cell in cells:
 
         try:
+
             cell_content = cell[0]['text']['content']
+
         except IndexError:
+
             cell_content = None
 
         row.append(cell_content)
 
     return row
-
-def export_to_xlsx(filespath, target):
-    with pd.ExcelWriter(target) as writer:
-        for filename in os.listdir(filespath):
-            if filename.endswith('.csv'):
-                filepath = os.path.join(filespath, filename)
-                df = pd.read_csv(filepath)
-                sheet_name = os.path.splitext(filename)[0]
-                df.to_excel(writer, sheet_name=sheet_name, index=False)
-
-        print(f"Created {target} successfully")
-
