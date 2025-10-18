@@ -1,7 +1,4 @@
-import math
 import pandas as pd
-
-import xlsxwriter
 
 def number_to_alphabet(num: int) -> str:
     if num == 0:
@@ -9,62 +6,81 @@ def number_to_alphabet(num: int) -> str:
 
     return number_to_alphabet((num-1)//26) + chr((num-1)%26+ord("A"))
 
-def create_linechart_from_data(data, workbook, worksheet, pos) -> xlsxwriter.Workbook:
+def pandas_create_chart_from_data(writer, 
+                                  data,
+                                  chart_title,
+                                  sheet_name,
+                                  start_pos) -> None:
 
-    alpha_column = number_to_alphabet(pos['col'] + 1)
+    table_df = pd.DataFrame(data=data)
 
-    sheet = workbook.add_worksheet()
+    table_df.to_excel(writer, 
+                      startrow=start_pos[0], 
+                      startcol=start_pos[1],
+                      index=False,
+                      sheet_name="Sheet1")
 
-    chart = workbook.add_chart({ 'type': 'line' })
-    chart.set_title({'name': f'=Sheet1!${ alpha_column }${ pos['row'] + 1 }'})
+    workbook = writer.book
+    worksheet = workbook.add_worksheet(sheet_name)
 
-    number_format = workbook.add_format({'num_format': '#'})
+    chart = workbook.add_chart({'type': 'line'})
+    chart.set_title({'name': chart_title})
 
-    max = 0
-
-    for row_index, row in enumerate(data):
-
-        for cell_index, cell in enumerate(row): 
-
-            cell_pos = { 'row': pos['row'] + row_index, 'col': pos['col'] + cell_index }
-
-            try: 
-
-                worksheet.write_number(cell_pos['row'], cell_pos['col'], float(cell), number_format)
-
-                if max < float(cell):
-                    max = math.floor(float(cell)+(float(cell)/3))
-
-            except (TypeError, ValueError):
-
-                worksheet.write(cell_pos['row'], cell_pos['col'], cell)
-
-            if cell_index > 0 and row_index == 1: 
-
-                current_column = number_to_alphabet(cell_pos['col'] + 1)
-                last_row_index = len(data)
-
-                chart.add_series({
-                    'name': f'=Sheet1!${current_column}${pos['row']+2}',
-                    'categories': f'=Sheet1!${alpha_column}${pos['row']+3}:${alpha_column}${pos['row']+last_row_index}',
-                    'values': f'=Sheet1!${current_column}${pos['row']+3}:${current_column}${pos['row']+last_row_index}',
-                    'marker': {'type': 'circle'}
-                })
+    max_value = max(list(map(lambda d: max(d[1:]), data[2:])))
 
     chart.set_x_axis({
         'name': 'Set',
     })
     chart.set_y_axis({
-        'name': 'Reps', 
         'min': 0,
-        'max': max
+        'max': max_value + (max_value // 3)
     })
 
-    chart.set_style(11)
+    (max_row, _) = table_df.shape
 
-    sheet.insert_chart('A1', chart)
+    serie = {'name': '', 'categories': [], 'values': []}
 
-    return workbook
+    for column_index, column in enumerate(data[1]):
+
+        serie['name'] = column
+
+        if column_index == 0:
+
+            (category_pos_row, category_pos_col) = (start_pos[0] + 3, start_pos[1])
+            (max_category_row, max_category_col) = (
+                max_row, 
+                category_pos_col
+            )
+
+            serie['categories'] = [
+                'Sheet1',
+                category_pos_row,
+                category_pos_col,
+                max_category_row,
+                max_category_col,
+            ]
+
+            continue
+
+        value_column_index = column_index - 1
+
+        (value_pos_row, value_pos_col) = (
+            start_pos[0] + 3, 
+            start_pos[1] + 1 + value_column_index
+        )
+        (max_value_row, max_value_col) = (max_row, value_pos_col)
+
+        serie['values'] = [
+            "Sheet1", 
+            value_pos_row, 
+            value_pos_col, 
+            max_value_row, 
+            max_value_col,
+        ]
+
+        chart.add_series(serie)
+
+    worksheet.insert_chart(0, 0, chart)
 
 def build_table_from_obj(table_obj) -> list:
 
@@ -96,9 +112,13 @@ def build_row(cells) -> list:
 
         try:
 
+            cell_content = float(cell[0]['text']['content'])
+
+        except (TypeError, ValueError):
+
             cell_content = cell[0]['text']['content']
 
-        except IndexError:
+        except (IndexError, KeyError):
 
             cell_content = None
 

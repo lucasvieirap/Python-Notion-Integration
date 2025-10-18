@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 from data_collection import collect
 from data_presentation import present
 
-import xlsxwriter
+import pandas as pd
 
 def main():
 
@@ -25,20 +25,22 @@ def main():
 
     table_objs = collect.get_table_objects(notion, page_content)
 
-    workbook = xlsxwriter.Workbook("notion_tables.xlsx")
-    worksheet = workbook.add_worksheet()
+    pos = (0, 0)
 
-    pos = {'col': 0, 'row': 0}
+    with pd.ExcelWriter("tables_notion.xlsx", engine="xlsxwriter", mode="w") as writer:
 
-    for table_obj in table_objs: 
+        for table_obj_index, table_obj in enumerate(table_objs): 
 
-        table = present.build_table_from_obj(table_obj)
+            table = present.build_table_from_obj(table_obj)
 
-        workbook = present.create_linechart_from_data(table, workbook, worksheet, pos)
+            sheet_name = f"{table[0][0]} CHART-{table_obj_index}"
+            present.pandas_create_chart_from_data(writer, 
+                                                  table, 
+                                                  table[0][0], 
+                                                  sheet_name, 
+                                                  pos)
 
-        pos = { 'col': pos['col'] + len(table[0]) + 1, 'row': pos['row'] }
-
-    workbook.close()
+            pos = ( pos[0], pos[1] + len(table[0]) + 1)
 
 if __name__ == '__main__':
     main()
