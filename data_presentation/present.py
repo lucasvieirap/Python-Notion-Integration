@@ -1,4 +1,7 @@
-import pandas as pd
+from openpyxl.chart import (
+    LineChart,
+    Reference,
+)
 
 def number_to_alphabet(num: int) -> str:
     if num == 0:
@@ -6,81 +9,41 @@ def number_to_alphabet(num: int) -> str:
 
     return number_to_alphabet((num-1)//26) + chr((num-1)%26+ord("A"))
 
-def pandas_create_chart_from_data(writer, 
-                                  data,
-                                  chart_title,
-                                  sheet_name,
-                                  start_pos) -> None:
+def create_chart_from_data(data_worksheet, chart_worksheet, chart_title, min_pos, max_pos, categories_min_pos, categories_max_pos, chart_pos):
 
-    table_df = pd.DataFrame(data=data)
+    linechart = LineChart()
 
-    table_df.to_excel(writer, 
-                      startrow=start_pos[0], 
-                      startcol=start_pos[1],
-                      index=False,
-                      sheet_name="Sheet1")
+    linechart.title = chart_title
+    linechart.style = 10
+    linechart.x_axis.title = "Sets"
 
-    workbook = writer.book
-    worksheet = workbook.add_worksheet(sheet_name)
+    (min_col, min_row) = min_pos
+    (max_col, max_row) = max_pos
 
-    chart = workbook.add_chart({'type': 'line'})
-    chart.set_title({'name': chart_title})
+    (categories_min_col, categories_min_row) = categories_min_pos
+    (categories_max_col, categories_max_row) = categories_max_pos
 
-    max_value = max(list(map(lambda d: max(d[1:]), data[2:])))
+    data = Reference(data_worksheet, 
+                     min_col=min_col, 
+                     min_row=min_row,
+                     max_col=max_col,
+                     max_row=max_row)
 
-    chart.set_x_axis({
-        'name': 'Set',
-    })
-    chart.set_y_axis({
-        'min': 0,
-        'max': max_value + (max_value // 3)
-    })
+    categories = Reference(data_worksheet, 
+                     min_col=categories_min_col, 
+                     min_row=categories_min_row,
+                     max_col=categories_max_col,
+                     max_row=categories_max_row)
 
-    (max_row, _) = table_df.shape
+    linechart.add_data(data, titles_from_data=False)
+    linechart.set_categories(categories)
 
-    serie = {'name': '', 'categories': [], 'values': []}
+    column = number_to_alphabet(chart_pos[1]+1)
+    row = chart_pos[0]+1
 
-    for column_index, column in enumerate(data[1]):
+    chart_worksheet.add_chart(linechart, f'{column}{row}')
 
-        serie['name'] = column
-
-        if column_index == 0:
-
-            (category_pos_row, category_pos_col) = (start_pos[0] + 3, start_pos[1])
-            (max_category_row, max_category_col) = (
-                max_row, 
-                category_pos_col
-            )
-
-            serie['categories'] = [
-                'Sheet1',
-                category_pos_row,
-                category_pos_col,
-                max_category_row,
-                max_category_col,
-            ]
-
-            continue
-
-        value_column_index = column_index - 1
-
-        (value_pos_row, value_pos_col) = (
-            start_pos[0] + 3, 
-            start_pos[1] + 1 + value_column_index
-        )
-        (max_value_row, max_value_col) = (max_row, value_pos_col)
-
-        serie['values'] = [
-            "Sheet1", 
-            value_pos_row, 
-            value_pos_col, 
-            max_value_row, 
-            max_value_col,
-        ]
-
-        chart.add_series(serie)
-
-    worksheet.insert_chart(0, 0, chart)
+    return linechart
 
 def build_table_from_obj(table_obj) -> list:
 
