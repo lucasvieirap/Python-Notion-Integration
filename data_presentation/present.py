@@ -1,7 +1,4 @@
-from openpyxl.chart import (
-    LineChart,
-    Reference,
-)
+import pandas as pd
 
 def number_to_alphabet(num: int) -> str:
     if num == 0:
@@ -9,41 +6,80 @@ def number_to_alphabet(num: int) -> str:
 
     return number_to_alphabet((num-1)//26) + chr((num-1)%26+ord("A"))
 
-def create_chart_from_data(data_worksheet, chart_worksheet, chart_title, min_pos, max_pos, categories_min_pos, categories_max_pos, chart_pos):
+def create_chart(writer, table_obj_dict):
+    cell_pos = (0, 0)
 
-    linechart = LineChart()
+    workbook = writer.book
 
-    linechart.title = chart_title
-    linechart.style = 10
-    linechart.x_axis.title = "Sets"
+    for name, values in table_obj_dict.items():
+        table_data = [[name], *values]
+        table_df = pd.DataFrame(data=table_data)
+        table_df.to_excel(writer, 
+                          startrow=cell_pos[0], 
+                          startcol=cell_pos[1],
+                          index=False,
+                          sheet_name="Sheet")
 
-    (min_col, min_row) = min_pos
-    (max_col, max_row) = max_pos
+        values_list = []
+        series_list = []
+        for row in values[1:]:
+            values_list += row[1:]
 
-    (categories_min_col, categories_min_row) = categories_min_pos
-    (categories_max_col, categories_max_row) = categories_max_pos
+        series_headers = values[0]
+        series_count = len(values[0])-1
 
-    data = Reference(data_worksheet, 
-                     min_col=min_col, 
-                     min_row=min_row,
-                     max_col=max_col,
-                     max_row=max_row)
+        for i in range(1, len(values[0])):
+            series_list.append(list(map(lambda x: None if i >= len(x) else x[i], values[1:])))
 
-    categories = Reference(data_worksheet, 
-                     min_col=categories_min_col, 
-                     min_row=categories_min_row,
-                     max_col=categories_max_col,
-                     max_row=categories_max_row)
+        max_value = max(list(filter(lambda x: x != None, values_list)))
 
-    linechart.add_data(data, titles_from_data=False)
-    linechart.set_categories(categories)
+        chart_sheet_name = f"{name} CHART"
 
-    column = number_to_alphabet(chart_pos[1]+1)
-    row = chart_pos[0]+1
+        chart_worksheet = workbook.add_worksheet(chart_sheet_name)
 
-    chart_worksheet.add_chart(linechart, f'{column}{row}')
+        linechart = workbook.add_chart({ 'type': 'line' })
+        linechart.set_title({ 'name': name })
+        linechart.set_style(13)
+        linechart.set_y_axis({
+            'name': 'Reps',
+            'min': 0,
+            'max': max_value+(max_value/3),
+        })
 
-    return linechart
+        linechart.set_size({
+            'x_scale': 2.3,
+            'y_scale': 2.3,
+        })
+
+        for serie_index in range(0, series_count):
+
+            (min_col, min_row) = (cell_pos[1] + (serie_index + 2), cell_pos[0]+4)
+            (max_col, max_row) = (cell_pos[1] + (serie_index + 2), cell_pos[0]+1 + table_df.shape[0])
+
+            (catmin_col, catmin_row) = (cell_pos[1]+1, 
+                                        cell_pos[0]+4)
+            (catmax_col, catmax_row) = (
+                cell_pos[1]+1, 
+                cell_pos[0]+1 + table_df.shape[0]
+            )
+
+            min_col_letter = number_to_alphabet(min_col)
+            max_col_letter = number_to_alphabet(max_col)
+
+            catmin_col_letter = number_to_alphabet(catmin_col)
+            catmax_col_letter = number_to_alphabet(catmax_col)
+
+            linechart.add_series({
+                'name': series_headers[serie_index+1],
+                'values': f'=Sheet!${min_col_letter}${min_row}:'+
+                                  f'{max_col_letter}${max_row}',
+                'categories': f'=Sheet!${catmin_col_letter}${catmin_row}:'+
+                                      f'{catmax_col_letter}${catmax_row}',
+            })
+
+        chart_worksheet.insert_chart('A1', linechart)
+
+        cell_pos = (cell_pos[0], cell_pos[1] + len(values[0]))
 
 def build_table_from_obj(table_obj) -> list:
 
