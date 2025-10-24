@@ -9,10 +9,19 @@ Run:
 ``` bash
 git clone https://github.com/lucasvieirap/Python-Notion-Integration
 cd Python-Notion-Integration
+```
+
+Create a virtual environment:
+``` bash
 python -m venv venv
 source venv/bin/activate
+```
+
+Install the dependencies:
+``` bash
 pip install -r requirements.txt
 ```
+
 ## Usage
 
 Run the main file with the url(s) to the notion page(s) as argument(s):
