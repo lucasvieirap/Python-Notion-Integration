@@ -1,6 +1,7 @@
 # Python-Notion-Integration
 
 ## Description
+This project is a script that takes information from tables inside Notion pages and creates a Excel file with tables and line charts. It uses pandas with xlsxwriter as it engine as it is fast and well-documented.
 
 ## Install
 
