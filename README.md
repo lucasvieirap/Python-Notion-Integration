@@ -7,14 +7,16 @@ This project is a script that takes information from tables inside Notion pages 
 
 Run:
 ``` bash
-  git clone https://github.com/lucasvieirap/Python-Notion-Integration
-  cd Python-Notion-Integration
-  pip install -r requirements.txt
+git clone https://github.com/lucasvieirap/Python-Notion-Integration
+cd Python-Notion-Integration
+python -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
 ```
 ## Usage
 
 Run the main file with the url(s) to the notion page(s) as argument(s):
 
 ``` bash
-  python main.py [url_to_notion_page] ...
+python main.py [url_to_notion_page] ...
 ```
