@@ -22,6 +22,12 @@ Install the dependencies:
 pip install -r requirements.txt
 ```
 
+Then create a .env file inside the project directory containing your Notion secret key:
+
+``` bash
+echo 'SECRET=[NOTION_SECRET_KEY]' >> .env
+``` 
+
 ## Usage
 
 Run the main file with the url(s) to the notion page(s) as argument(s):
